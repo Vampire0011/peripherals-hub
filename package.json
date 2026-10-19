@@ -1,0 +1,53 @@
+{
+  "name": "peripherals-hub",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate",
+    "sync:mock": "tsx src/lib/engine/runSync.ts",
+    "typecheck": "tsc --noEmit",
+    "db:use-postgres": "node scripts/use-postgres.mjs"
+  },
+  "dependencies": {
+    "next": "14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@auth/prisma-adapter": "^2.7.4",
+    "next-auth": "5.0.0-beta.25",
+    "@prisma/client": "^6.2.1",
+    "lucide-react": "^0.446.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.2",
+    "class-variance-authority": "^0.7.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-dropdown-menu": "^2.1.1",
+    "@radix-ui/react-avatar": "^1.1.0",
+    "@radix-ui/react-tabs": "^1.1.0",
+    "@radix-ui/react-select": "^2.1.1",
+    "playwright": "^1.47.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "@types/node": "^22.7.4",
+    "@types/react": "^18.3.10",
+    "@types/react-dom": "^18.3.0",
+    "tailwindcss": "^3.4.13",
+    "postcss": "^8.4.47",
+    "autoprefixer": "^10.4.20",
+    "tsx": "^4.19.1",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.15",
+    "prisma": "^6.2.1"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
