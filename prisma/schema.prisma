@@ -1,0 +1,146 @@
+// ------------------------------------------------------
+// Peripherals Hub — Prisma Schema
+// Local dev: SQLite. Production: switch provider to
+// "postgresql" and set DATABASE_URL to your Postgres URI.
+// No other model changes are required to migrate.
+// ------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // change to "postgresql" for production
+  url      = env("DATABASE_URL")
+}
+
+// ---------------- Auth.js required models ----------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
+
+  accounts  Account[]
+  sessions  Session[]
+  wishlists Wishlist[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String?
+  access_token             String?
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String?
+  session_state            String?
+  refresh_token_expires_in Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------- Product domain models ----------------
+
+enum Category {
+  MOUSE
+  KEYBOARD
+}
+
+enum ConnectionType {
+  WIRED
+  WIRELESS
+  BOTH
+}
+
+model Product {
+  id             String         @id @default(cuid())
+  sku            String         @unique // stable identifier used for dedup by the ingestion engine
+  title          String
+  category       Category
+  price          Float
+  oldPrice       Float?
+  currency       String         @default("USD")
+  imageUrl       String
+  buyUrl         String
+  sourcePlatform String         @default("mock") // e.g. amazon, bestbuy, mock
+  connectionType ConnectionType
+  switches       String? // keyboards
+  sensor         String? // mice
+  weight         String?
+  isAvailable    Boolean        @default(true)
+
+  wishlistedBy  Wishlist[]
+  priceHistory  PriceHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
+
+model Wishlist {
+  id        String @id @default(cuid())
+  userId    String
+  productId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  productId String
+  price     Float
+  checkedAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, checkedAt])
+}
+
+// ---------------- Engine sync logs (for the admin console) ----------------
+
+model SyncLog {
+  id        String   @id @default(cuid())
+  message   String
+  level     String   @default("info") // info | success | warn | error
+  createdAt DateTime @default(now())
+}
