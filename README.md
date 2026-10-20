@@ -1,127 +1,155 @@
-# PeripheralsHub
+# 🖱️⌨️ PeripheralsHub
 
-A production-ready mouse & keyboard aggregator: dark, gamer-aesthetic storefront with OAuth auth, wishlists, an automated price-ingestion engine, and an admin sync console.
+A dark, gamer-styled **mouse & keyboard aggregator** with OAuth login, saved favorites, price-drop tracking, affiliate link localization, and an automated ingestion engine with a live admin console.
 
-## Tech Stack
-- **Frontend**: Next.js 14 (App Router) · Tailwind CSS · shadcn/ui-style components · lucide-react
-- **Backend**: Next.js Server Actions & Route Handlers · Prisma ORM
-- **Auth**: Auth.js (NextAuth v5) — Google + GitHub OAuth, database sessions
-- **DB**: SQLite locally, drop-in Postgres for production
-- **Ingestion**: Mock feed simulator (default, instant) + Playwright headless scraper (opt-in)
+![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=nextdotjs)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?logo=prisma)
+![Auth.js](https://img.shields.io/badge/Auth.js-v5-purple)
 
-## Project Structure
-```
-peripherals-hub/
-├── prisma/
-│   ├── schema.prisma        # User/Account/Session + Product/Wishlist/PriceHistory/SyncLog
-│   └── seed.ts               # Seeds 6 peripherals + demo admin
-├── src/
-│   ├── app/
-│   │   ├── page.tsx           # Homepage (Hero + Grid)
-│   │   ├── login/page.tsx
-│   │   ├── signup/page.tsx
-│   │   ├── dashboard/page.tsx # Protected: profile + wishlist
-│   │   ├── admin/page.tsx     # Protected (ADMIN): live sync console
-│   │   └── api/
-│   │       ├── auth/[...nextauth]/route.ts
-│   │       └── admin/logs/route.ts
-│   ├── components/            # navbar, hero, product-card, product-grid, admin-console, ui/*
-│   ├── lib/
-│   │   ├── engine/             # mockSource.ts, playwrightSource.ts, upsertProduct.ts, syncEngine.ts
-│   │   ├── actions/             # products.ts, admin.ts (Server Actions)
-│   │   ├── affiliate.ts         # localizeAffiliateLink()
-│   │   ├── priceTrend.ts        # computePriceTrend()
-│   │   └── prisma.ts
-│   ├── auth.ts                 # NextAuth v5 config
-│   └── middleware.ts           # Route protection for /admin & /dashboard
-└── .env.example
-```
+## ✨ Features
 
-## 1. Install
-```bash
-npm install
-```
-> Requires Prisma 6.2+ (SQLite enum support), already pinned in `package.json`.
+- **Storefront**: responsive 4-column grid of mice and keyboards with live client-side filters (category, connection) and sorting.
+- **Product cards**: image, title, price, platform, a prominent **Buy Now** button, and a ❤️ to save favorites. Outbound links open with `target="_blank"` and `rel="noopener noreferrer"`.
+- **Auth**: Google and GitHub sign-in (Auth.js v5), protected `/dashboard`, and an admin-only `/admin`.
+- **Price trends**: price history is stored per product; cards show a 📉 **X% Price Drop** badge when the price is below the historical average.
+- **Affiliate monetization**: `localizeAffiliateLink(url, country)` appends country-specific tags, applied server-side through a `/go/[id]` redirect.
+- **Ingestion engine** (`src/lib/engine/`): mock feed for instant testing, Playwright scraper for real pages (auto-falls back to mock), SKU-based deduplication (update price or create new).
+- **Admin console**: trigger syncs and watch created/updated products stream into a live log.
 
-## 2. Configure environment
-```bash
-cp .env.example .env
-```
-Fill in `.env`:
+## 🧰 Tech Stack
 
-| Variable | How to get it |
+| Layer | Tech |
 |---|---|
-| `AUTH_SECRET` | Run `npx auth secret` (or any long random string) |
-| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials). Create an OAuth Client (Web app). Redirect URI: `http://localhost:3000/api/auth/callback/google` |
-| `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | [GitHub → Settings → Developer settings → OAuth Apps](https://github.com/settings/developers). Callback URL: `http://localhost:3000/api/auth/callback/github` |
-| `ADMIN_EMAILS` | Your sign-in email(s); auto-promoted to admin |
-| `CRON_SECRET` | Any random string; secures `/api/cron/sync` |
-| `DATABASE_URL` | Defaults to `file:./dev.db` (SQLite). See Postgres migration below. |
+| Frontend | Next.js 14 (App Router), Tailwind CSS, shadcn/ui-style components, Lucide icons |
+| Backend | Server Actions, Route Handlers, Prisma ORM |
+| Auth | Auth.js (NextAuth v5), Google + GitHub, JWT sessions |
+| Database | SQLite locally → PostgreSQL in production |
+| Scraping | Playwright (headless) + mock feed |
 
-## 3. Set up the database
-```bash
-npm run db:push     # creates SQLite schema
-npm run db:seed      # loads 6 peripherals + a demo admin row
-```
+## 🚀 Quick Start
 
-## 4. Run the app
 ```bash
+git clone https://github.com/Vampire0011/peripherals-hub.git
+cd peripherals-hub
+npm install
+cp .env.example .env        # then fill in the values below
+npx prisma generate
+npm run db:push
+npm run db:seed
 npm run dev
 ```
-Visit `http://localhost:3000`.
 
-## Making yourself Admin
-Set `ADMIN_EMAILS="you@example.com"` in `.env` (comma-separated). Whoever signs in with a matching email is promoted to `ADMIN` automatically, and the **Admin** link appears in the navbar. The role is re-read from the database on every server request, so changes apply without re-login. (You can also edit the `role` column in `npx prisma studio`.)
+Open <http://localhost:3000>.
 
-## Using the Ingestion Engine
-- **Mock mode (default, instant)**: Go to `/admin` → **Run Sync Now**. This pulls from `src/lib/engine/mockSource.ts`, which simulates a live feed with jittered prices, then dedupes against existing `Product.sku` values — updating price/history on match, inserting new rows otherwise. All activity streams into the **Live Sync Console**.
-- **Playwright mode (real scraping)**: pick "Playwright scraper" in the admin panel, or set `SYNC_MODE=playwright`. Define targets in `.env` as a JSON array in `SCRAPE_TARGETS` (see `.env.example`). Extraction reads schema.org JSON-LD, then OpenGraph/product meta tags. If Playwright is unavailable or returns nothing, the engine **automatically falls back to the mock feed** and logs a warning. Standalone:
-  ```bash
-  npx playwright install chromium
-  SYNC_MODE=playwright npm run sync:mock
-  ```
+## 🔐 Environment Variables
 
-## Monetization
-- `localizeAffiliateLink(url, country)` in `src/lib/affiliate.ts` appends country-specific affiliate tags (`AFFILIATE_TAG_US`, `AFFILIATE_TAG_UK`, `AFFILIATE_TAG_IN`, falling back to `AFFILIATE_TAG_DEFAULT`) to every outbound "Buy Now" link.
-- `computePriceTrend()` in `src/lib/priceTrend.ts` compares current price to the historical average and drives the "📉 X% Price Drop" badge on product cards.
+| Variable | Purpose |
+|---|---|
+| `AUTH_SECRET` | Session signing key. Generate with `npx auth secret` |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | [Google Cloud Console](https://console.cloud.google.com/apis/credentials). Redirect URI: `http://localhost:3000/api/auth/callback/google` |
+| `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | [GitHub OAuth Apps](https://github.com/settings/developers). Callback URL: `http://localhost:3000/api/auth/callback/github` |
+| `ADMIN_EMAILS` | Comma-separated emails auto-promoted to admin on sign-in |
+| `DATABASE_URL` | `file:./dev.db` (SQLite) or a PostgreSQL URI |
+| `AFFILIATE_TAG_DEFAULT`, `_US`, `_UK`, `_IN` | Affiliate tracking IDs by country |
+| `SYNC_MODE` | `mock` (default) or `playwright` |
+| `SCRAPE_TARGETS` | JSON array of pages for the Playwright scraper (see `.env.example`) |
+| `CRON_SECRET` | Secures `GET /api/cron/sync` |
 
-## Affiliate links
-Cards link to `/go/<id>`, a server route that applies `localizeAffiliateLink()` using the visitor's country (from `x-vercel-ip-country` / `cf-ipcountry`) and 307-redirects. Tags are set via `AFFILIATE_TAG_*` env vars.
+> Never commit `.env`. It is already in `.gitignore`.
 
-## Docker (PostgreSQL) and CI
+## 👑 Becoming Admin
+
+Put your sign-in email in `ADMIN_EMAILS`, restart the server, and sign in. The **Admin** link appears in the navbar and `/admin` unlocks.
+
+## 🔄 Ingestion Engine
+
+1. Go to `/admin` and choose **Mock feed** or **Playwright scraper**.
+2. Click **Run Sync Now**.
+3. Watch the console. Existing SKUs get a price update and a new price-history row; unknown SKUs are created.
+
+The first mock sync creates two products that aren't in the seed, so you'll see both "Created" and "Updated" lines.
+
+For real scraping:
+
 ```bash
-cp .env.example .env      # fill in auth values
-docker compose up --build  # app on :3000, Postgres 16 alongside
-docker compose exec app npx prisma db push   # first run only
+npx playwright install chromium
 ```
-`.github/workflows/ci.yml` runs generate, typecheck, lint and build on every push. `vercel.json` schedules `/api/cron/sync` every 6 hours.
 
-## Migrating to PostgreSQL
-Quick way: `npm run db:use-postgres` (reverse with `node scripts/use-postgres.mjs --sqlite`). Manual way:
+Then set `SCRAPE_TARGETS` in `.env`. Extraction reads schema.org JSON-LD and OpenGraph tags. If the scraper fails or returns nothing, the engine falls back to the mock feed and logs a warning.
 
-1. In `prisma/schema.prisma`, change:
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
-   ```
-2. Set `DATABASE_URL="postgresql://user:pass@host:5432/dbname"` in `.env`.
-3. Run `npx prisma migrate dev --name init` (instead of `db push`) to generate a proper migration history, then `npm run db:seed`.
+Run a sync from the CLI or a scheduler:
 
-No application code changes are required — Prisma abstracts the rest.
+```bash
+npm run sync:mock
+```
 
-## Deployment Notes
-- Set all `.env` values as environment variables in your host (Vercel, Railway, Fly.io, etc.).
-- Update OAuth redirect URIs in Google/GitHub consoles to your production domain.
-- If deploying serverless (e.g. Vercel), Playwright scraping should run in a separate worker/cron process (e.g. a scheduled GitHub Action or a small Node worker) rather than inside a serverless function, due to browser binary size/cold-start constraints. The mock engine works fine inline.
+## 🗂️ Project Structure
 
-## Scripts
+```
+├── prisma/            schema.prisma, seed.ts
+├── public/products/   product artwork (SVG)
+├── scripts/           use-postgres.mjs
+├── src/
+│   ├── app/           pages: /, /login, /signup, /dashboard, /admin, /go/[id], /api/*
+│   ├── components/    navbar, hero, product-card, product-grid, admin-console, ui/*
+│   ├── lib/
+│   │   ├── engine/    mockSource, playwrightSource, upsertProduct, syncEngine
+│   │   ├── actions/   products.ts, admin.ts (Server Actions)
+│   │   ├── affiliate.ts, priceTrend.ts, prisma.ts, utils.ts
+│   ├── auth.ts, auth.config.ts, middleware.ts
+│   └── types/
+├── Dockerfile, docker-compose.yml, vercel.json
+└── .github/workflows/ci.yml
+```
+
+## 🐘 PostgreSQL
+
+```bash
+npm run db:use-postgres     # switches the Prisma provider
+# set DATABASE_URL="postgresql://user:pass@host:5432/db"
+npx prisma migrate dev --name init
+npm run db:seed
+```
+
+Switch back with `node scripts/use-postgres.mjs --sqlite`.
+
+## 🐳 Docker
+
+```bash
+cp .env.example .env
+docker compose up --build
+docker compose exec app npx prisma db push    # first run only
+```
+
+## ☁️ Deployment
+
+- Set all `.env` values as environment variables on your host.
+- Update the Google/GitHub OAuth redirect URLs to your production domain.
+- `vercel.json` schedules `/api/cron/sync` every 6 hours (Vercel sends `CRON_SECRET` automatically).
+- Run Playwright scraping in a separate worker or scheduled job, not inside a serverless function.
+
+## 📜 Scripts
+
 | Command | Description |
 |---|---|
-| `npm run dev` | Start dev server |
-| `npm run build && npm start` | Production build/serve |
-| `npm run db:push` | Sync Prisma schema to DB |
-| `npm run db:seed` | Seed demo catalog + admin |
+| `npm run dev` | Start the dev server |
+| `npm run build` / `npm start` | Production build and serve |
+| `npm run typecheck` | TypeScript check |
+| `npm run lint` | ESLint |
+| `npm run db:push` | Apply the Prisma schema |
+| `npm run db:seed` | Load the 6 starter peripherals |
 | `npm run db:studio` | Open Prisma Studio |
 | `npm run sync:mock` | Run the ingestion engine from the CLI |
+
+## 🛠️ Troubleshooting
+
+- **`@prisma/client did not initialize yet`**: run `npx prisma generate`.
+- **OAuth `redirect_uri_mismatch`**: the callback URL in Google/GitHub must match exactly, including the port.
+- **Can't open `/admin`**: confirm your email is in `ADMIN_EMAILS`, then sign out and back in.
+- **No price-drop badges yet**: run a few syncs. The badge needs history that is higher than the current price.
+
+## 📄 License
+
+MIT. Add a `LICENSE` file if you plan to publish.
